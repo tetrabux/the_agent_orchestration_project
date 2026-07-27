@@ -70,6 +70,41 @@ Here's the full summary of your request:
 | Whole Shares You Can Buy | 8 shares |
 ```
 
+## Extra verification we did
+
+After the milestones were built, we went back and actually tried to break
+things instead of just trusting the code looked right. Here is what we
+checked, why, and what happened.
+
+**All 3 retries failing.** We wanted to see the agent's behavior when
+get_price fails every single attempt, not just once. We forced the
+failure rate up temporarily and ran resilient_loop. It gave up cleanly
+after 3 attempts and answered with what it could, no crash.
+
+**The hard step cap.** We wanted proof the loop cannot run forever, not
+just a comment saying so. Every entry point passes a recursion_limit into
+LangGraph and catches the resulting error. Confirmed with a test where
+the model is mocked to keep calling tools forever, it stops right at the
+cap.
+
+**The agent choosing its own tool order.** We wanted to rule out the
+agent just following one lucky path. We gave it two different goals in
+routing_loop and logged every tool call. The order changed both times
+based on the goal, and both runs landed on the correct answer.
+
+**Context trimming keeping the numbers that matter.** Our biggest worry
+was the summarizer paraphrasing away a price or cash figure once it
+scrolled out of recent messages. We planted a specific price early in a
+long fake conversation and asked for it back later without a re-lookup.
+It came back exact, even after the history was trimmed from dozens of
+messages down to 5.
+
+**Automated tests.** We added three small pytest tests so these checks do
+not depend on us running things by hand again: one confirms a rejected
+order never touches the portfolio file, one confirms a tool that fails
+twice then succeeds still returns the right result, and one confirms a
+runaway loop gets stopped by the step cap. All three pass.
+
 **Cost of a loop.** A one-shot prompt costs one call over one prompt. An
 agent loop costs N calls, and because each call resends the entire running
 history rather than just the new turn, the prompt itself grows every call
