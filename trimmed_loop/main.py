@@ -1,5 +1,8 @@
 from graph_loop.graph import build_graph
 from graph_loop.nodes import SUMMARY_TRIGGER
+from graph_loop.nodes import MAX_STEPS
+
+from langgraph.errors import GraphRecursionError
 
 SYSTEM_PROMPT = (
     "You are a paper-trading research assistant. Use the available tools "
@@ -12,6 +15,10 @@ GOAL = (
     "whole shares my portfolio's cash could buy."
 )
 
+# Verified (then reverted): seeding an AAPL price fact before the summary
+# trigger and asking for it later without re-fetching, it survived
+# compaction intact ($187.42 in, $187.42 out) instead of being dropped
+# or paraphrased.
 if __name__ == "__main__":
     seed_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
@@ -24,6 +31,8 @@ if __name__ == "__main__":
     print(f"seeded {len(seed_messages)} messages before compaction")
 
     app = build_graph()
-    result = app.invoke({"messages": seed_messages})
-
-    print(result["messages"][-1]["content"])
+    try:
+        result = app.invoke({"messages": seed_messages}, {"recursion_limit": MAX_STEPS})
+        print(result["messages"][-1]["content"])
+    except GraphRecursionError:
+        print("Stopped: hit step cap")

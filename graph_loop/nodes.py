@@ -12,6 +12,7 @@ import tiktoken
 DANGEROUS_TOOLS= {"place_order"}
 
 MAX_RETRIES = 3
+MAX_STEPS = 12
 
 SUMMARY_TRIGGER = 10
 KEEP_RECENT = 3
@@ -89,6 +90,7 @@ def tool_node(state: State) -> State:
 
       for attempt in range(MAX_RETRIES):
          try:
+            print(f"[tool] calling {tool_name}")
             result = tool(**args)
             break
          except Exception as e:

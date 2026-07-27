@@ -1,5 +1,8 @@
+from langgraph.errors import GraphRecursionError
+
 from .graph import build_graph
-from raw_loop.loop import SYSTEM_PROMP
+from .nodes import MAX_STEPS
+from raw_loop.loop import SYSTEM_PROMPT
 
 GOAL = (
     "I have $2000 in cash. Look up AAPL's price, then tell me how many "
@@ -14,5 +17,8 @@ if __name__ == "__main__":
         {"role":"user","content": GOAL}
     ]}
 
-    result = app.invoke(seed_state)
-    print(result["messages"][-1]["content"])
+    try:
+        result = app.invoke(seed_state, {"recursion_limit": MAX_STEPS})
+        print(result["messages"][-1]["content"])
+    except GraphRecursionError:
+        print("Stopped: hit step cap")
